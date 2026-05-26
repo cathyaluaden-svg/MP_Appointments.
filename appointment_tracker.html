@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Appointment Document Tracking</title>
+<style>
+body {
+  font-family: Arial, sans-serif;
+  margin: 20px;
+  font-weight: bold;
+  background-color: #fff;
+  transition: background-color 0.3s, color 0.3s;
+}
+body.dark-mode {
+  background-color: #222;
+  color: #eee;
+}
+body::before {
+  content: "";
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background-color: rgba(255, 255, 255, 0.6);
+  z-index: -1;
+  transition: background-color 0.3s;
+}
+body.dark-mode::before {
+  background-color: rgba(0, 0, 0, 0.6);
+}
+h1 {
+  text-align: center;
+  color: #333;
+  font-weight: bold;
+  margin-bottom: 20px;
+}
+#authSection, #roleSection, #filterSection, #themeToggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 15px;
+}
+#viewOnlyMessage {
+  display: none;
+  color: red;
+  font-weight: bold;
+  margin-bottom: 10px;
+  text-align: center;
+}
+#editSection {
+  display: none;
+  margin-bottom: 20px;
+}
+form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-start;
+}
+form input[type="text"],
+form select,
+form textarea {
+  padding: 8px;
+  font-weight: bold;
+  width: calc(50% - 20px);
+  max-width: 300px;
+  box-sizing: border-box;
+}
+form textarea {
+  width: 100%;
+  resize: vertical;
+}
+#formButtons {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  width: 100%;
+}
+#formButtons button {
+  padding: 8px 16px;
+  font-weight: bold;
+  cursor: pointer;
+}
+#searchExport, #filterSection {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 10px;
+  justify-content: center;
+  align-items: center;
+}
+#searchBox {
+  padding: 8px;
+  font-weight: bold;
+  width: 200px;
+  max-width: 100%;
+}
+button {
+  padding: 8px 16px;
+  font-weight: bold;
+  cursor: pointer;
+}
+#themeToggleBtn {
+  padding: 8px 12px;
+  margin-left: 10px;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+th, td {
+  border: 1px solid #ccc;
+  padding: 10px;
+  text-align: left;
+  font-weight: bold;
+  cursor: pointer;
+}
+th {
+  background-color: #f2f2f2;
+  user-select: none;
+}
+@media(max-width: 600px){
+  body { padding: 10px; }
+  form input, form select, form textarea { width: 100%; }
+  #formButtons { justify-content: flex-start; }
+}
+</style>
+</head>
+<body>
+<h1>Appointment Document Tracking</h1>
+
+<!-- Theme Toggle -->
+<div id="themeToggle">
+  <button id="themeToggleBtn" aria-label="Toggle Light/Dark Mode">Toggle Theme</button>
+</div>
+
+<!-- User Role & Login -->
+<div id="authSection">
+  <input type="password" id="adminPassword" placeholder="Enter admin password" aria-label="Enter admin password" />
+  <button onclick="authenticate()" aria-label="Login as Admin">Login</button>
+</div>
+
+<!-- Role display -->
+<div id="roleSection" style="display:none;">
+  <span id="roleDisplay"></span>
+</div>
+
+<!-- Message for view only -->
+<div id="viewOnlyMessage" role="alert" aria-live="assertive">You are in view-only mode. Contact admin to edit.</div>
+
+<!-- User registration (simple) -->
+<div id="registerSection" style="display:none;">
+  <input type="text" id="newUsername" placeholder="Enter username" aria-label="Username" />
+  <button onclick="registerUser()" aria-label="Register User">Register</button>
+</div>
+
+<!-- Form for add/edit -->
+<div id="editSection">
+  <form id="docForm" aria-label="Document Entry Form">
+    <input type="hidden" id="editIndex" />
+    <input type="text" id="docName" placeholder="Document Name" required aria-label="Document Name" />
+    <br />
+    <select id="appointmentType" required aria-label="Appointment Type">
+      <option value="">Select Appointment Type</option>
+      <option value="Permanent">Permanent</option>
+      <option value="Temporary">Temporary</option>
+      <option value="Provisional">Provisional</option>
+    </select>
+    <select id="natureOfAppointment" required aria-label="Nature of Appointment">
+      <option value="">Select Nature of Appointment</option>
+      <option value="Original">Original</option>
+      <option value="Reemployment">Reemployment</option>
+      <option value="Reappointment">Reappointment</option>
+      <option value="Substitute">Substitute</option>
+      <option value="Demotion">Demotion</option>
+      <option value="Reclass">Reclass</option>
+      <option value="Promotion">Promotion</option>
+      <option value="Transfer">Transfer</option>
+      <option value="Resign">Resign</option>
+      <option value="Death">Death</option>
+    </select>
+    <select id="docStatus" required aria-label="Document Status">
+      <option value="Pending">Pending</option>
+      <option value="In Progress">In Progress</option>
+      <option value="Completed">Completed</option>
+      <option value="Drafted">Drafted</option>
+      <option value="HR Review and preparation of appointments">HR Review and preparation of appointments</option>
+      <option value="For Signature AOV">For Signature AOV</option>
+      <option value="For Signature ASDS">For Signature ASDS</option>
+      <option value="For Signature SDS">For Signature SDS</option>
+      <option value="With Compliance">With Compliance</option>
+      <option value="For Extraction and Validation">For Extraction and Validation</option>
+      <option value="RAI">RAI</option>
+      <option value="Ready for CSC">Ready for CSC</option>
+      <option value="Submitted to CSC">Submitted to CSC</option>
+      <option value="CSC Evaluation">CSC Evaluation</option>
+      <option value="CSC Approved">CSC Approved</option>
+      <option value="CSC Released">CSC Released</option>
+      <option value="Sortation and extraction for release to the appointee">Sortation and extraction for release to the appointee</option>
+      <option value="Ready for Release">Ready for Release</option>
+    </select>
+    <br />
+    <label for="remarks">Remarks:</label><br />
+    <textarea id="remarks" placeholder="Enter remarks" rows="3" aria-label="Remarks"></textarea>
+    <div id="formButtons">
+      <button type="submit" aria-label="Save Document">Save</button>
+      <button type="button" id="cancelEdit" style="display:none;" aria-label="Cancel Editing">Cancel</button>
+    </div>
+  </form>
+</div>
+
+<!-- Search, filter, export -->
+<div id="searchExport">
+  <input type="text" id="searchBox" placeholder="Search by Document Name" onkeyup="searchDocs()" aria-label="Search Documents" />
+  <select id="filterStatus" onchange="filterDocs()" aria-label="Filter by Status">
+    <option value="">All Statuses</option>
+    <option value="Pending">Pending</option>
+    <option value="In Progress">In Progress</option>
+    <option value="Completed">Completed</option>
+  </select>
+  <select id="filterType" onchange="filterDocs()" aria-label="Filter by Appointment Type">
+    <option value="">All Types</option>
+    <option value="Permanent">Permanent</option>
+    <option value="Temporary">Temporary</option>
+    <option value="Provisional">Provisional</option>
+  </select>
+  <button onclick="exportToExcel()" aria-label="Export to CSV">Export to CSV</button>
+  <button onclick="undoDelete()" id="undoBtn" style="display:none;" aria-label="Undo Last Delete">Undo Last Delete</button>
+</div>
+
+<!-- Table -->
+<table aria-label="Documents Table">
+  <thead>
+    <tr>
+      <th onclick="sortTable(0)">Document Name</th>
+      <th onclick="sortTable(1)">Appointment Type</th>
+      <th onclick="sortTable(2)">Nature</th>
+      <th onclick="sortTable(3)">Status</th>
+      <th onclick="sortTable(4)">Remarks</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody id="docTableBody"></tbody>
+</table>
+
+<script>
+// --- Role & Authentication ---
+const correctPassword = "YourPassword123"; // Change this!
+let userRole = "guest"; // guest, admin
+let lastDeleted = null;
+
+// --- Elements ---
+const authSection = document.getElementById('authSection');
+const roleSection = document.getElementById('roleSection');
+const roleDisplay = document.getElementById('roleDisplay');
+const viewOnlyMessage = document.getElementById('viewOnlyMessage');
+const editSection = document.getElementById('editSection');
+const themeBtn = document.getElementById('themeToggleBtn');
+
+// --- Data ---
+let documents = JSON.parse(localStorage.getItem('documents')) || [];
+const form = document.getElementById('docForm');
+const docNameInput = document.getElementById('docName');
+const appointmentTypeSelect = document.getElementById('appointmentType');
+const natureOfAppointmentSelect = document.getElementById('natureOfAppointment');
+const docStatusSelect = document.getElementById('docStatus');
+const remarksInput = document.getElementById('remarks');
+const editIndexInput = document.getElementById('editIndex');
+const cancelButton = document.getElementById('cancelEdit');
+
+const searchBox = document.getElementById('searchBox');
+const filterStatus = document.getElementById('filterStatus');
+const filterType = document.getElementById('filterType');
+const undoBtn = document.getElementById('undoBtn');
+
+window.onload = () => {
+  if (userRole !== 'guest') {
+    showInterface();
+  } else {
+    authSection.style.display = 'flex';
+    viewOnlyMessage.style.display = 'block';
+    editSection.style.display = 'none';
+  }
+  displayDocuments();
+  highlightTheme();
+};
+
+// --- Authentication & Role ---
+function authenticate() {
+  const pwd = document.getElementById('adminPassword').value;
+  if (pwd === correctPassword) {
+    userRole = 'admin';
+    showInterface();
+  } else {
+    alert('Incorrect password');
+  }
+}
+
+function showInterface() {
+  authSection.style.display = 'none';
+  roleSection.style.display = 'block';
+  roleDisplay.innerText = `Role: ${userRole.toUpperCase()}`;
+  document.getElementById('viewOnlyMessage').style.display = 'none';
+  document.getElementById('editSection').style.display = 'block';
+  displayDocuments();
+}
+
+// --- Theme toggle ---
+document.getElementById('themeToggleBtn').onclick = () => {
+  document.body.classList.toggle('dark-mode');
+  highlightTheme();
+};
+function highlightTheme() {
+  const btn = document.getElementById('themeToggleBtn');
+  if (document.body.classList.contains('dark-mode')) {
+    btn.innerText = 'Light Mode';
+  } else {
+    btn.innerText = 'Dark Mode';
+  }
+}
+
+// --- Register User (simple) ---
+function registerUser() {
+  const username = document.getElementById('newUsername').value.trim();
+  if (username) {
+    alert(`User "${username}" registered (but no login system implemented).`);
+  } else {
+    alert('Enter a username');
+  }
+}
+
+// --- Display documents ---
+function displayDocuments() {
+  const tbody = document.getElementById('docTableBody');
+  tbody.innerHTML = '';
+  documents.forEach((doc, index) => {
+    if (!filterMatch(doc)) return; // filter
+    const row = tbody.insertRow();
+    row.insertCell().innerText = doc.name;
+    row.insertCell().innerText = doc.appointmentType || '';
+    row.insertCell().innerText = doc.natureOfAppointment || '';
+    row.insertCell().innerText = doc.status;
+    row.insertCell().innerText = doc.remarks || '';
+    const actionsCell = row.insertCell();
+    if (userRole === 'admin') {
+      const editBtn = document.createElement('button');
+      editBtn.innerText = 'Edit';
+      editBtn.setAttribute('aria-label', 'Edit Document');
+      editBtn.onclick = () => startEdit(index);
+      actionsCell.appendChild(editBtn);
+      const delBtn = document.createElement('button');
+      delBtn.innerText = 'Delete';
+      delBtn.setAttribute('aria-label', 'Delete Document');
+      delBtn.onclick = () => deleteDocument(index);
+      actionsCell.appendChild(delBtn);
+    } else {
+      actionsCell.innerText = 'View only';
+    }
+  });
+}
+
+// --- Add / Edit ---
+form.onsubmit = (e) => {
+  e.preventDefault();
+  if (userRole !== 'admin') {
+    alert('No permission');
+    return;
+  }
+  const newDoc = {
+    name: docNameInput.value.trim(),
+    appointmentType: appointmentTypeSelect.value,
+    natureOfAppointment: natureOfAppointmentSelect.value,
+    status: docStatusSelect.value,
+    remarks: remarksInput.value.trim()
+  };
+  const idx = document.getElementById('editIndex').value;
+  if (idx !== '') {
+    documents[idx] = newDoc;
+  } else {
+    documents.push(newDoc);
+  }
+  saveAndDisplay();
+  resetForm();
+};
+function startEdit(index) {
+  if (userRole !== 'admin') return;
+  const doc = documents[index];
+  document.getElementById('docName').value = doc.name;
+  document.getElementById('appointmentType').value = doc.appointmentType || '';
+  document.getElementById('natureOfAppointment').value = doc.natureOfAppointment || '';
+  document.getElementById('docStatus').value = doc.status;
+  document.getElementById('remarks').value = doc.remarks || '';
+  document.getElementById('editIndex').value = index;
+  cancelButton.style.display = 'inline';
+  document.querySelector('#docForm button[type="submit"]').innerText = 'Update';
+}
+function resetForm() {
+  document.getElementById('docForm').reset();
+  document.getElementById('editIndex').value = '';
+  cancelButton.style.display = 'none';
+  document.querySelector('#docForm button[type="submit"]').innerText = 'Save';
+}
+cancelButton.onclick = () => resetForm();
+
+// --- Save & Display ---
+function saveAndDisplay() {
+  localStorage.setItem('documents', JSON.stringify(documents));
+  displayDocuments();
+}
+
+// --- Search & Filter ---
+function searchDocs() {
+  displayDocuments();
+}
+function filterMatch(doc) {
+  const searchVal = document.getElementById('searchBox').value.toLowerCase();
+  const statusFilter = document.getElementById('filterStatus').value;
+  const typeFilter = document.getElementById('filterType').value;
+  const matchSearch = doc.name.toLowerCase().includes(searchVal);
+  const matchStatus = !statusFilter || doc.status === statusFilter;
+  const matchType = !typeFilter || doc.appointmentType === typeFilter;
+  return matchSearch && matchStatus && matchType;
+}
+function filterDocs() {
+  displayDocuments();
+}
+
+// --- Delete with undo ---
+function deleteDocument(index) {
+  if (confirm('Are you sure?')) {
+    lastDeleted = { index, doc: documents[index] };
+    documents.splice(index, 1);
+    saveAndDisplay();
+    showUndo();
+  }
+}
+function showUndo() {
+  undoBtn.style.display = 'inline';
+}
+function undoDelete() {
+  if (lastDeleted) {
+    documents.splice(lastDeleted.index, 0, lastDeleted.doc);
+    saveAndDisplay();
+    lastDeleted = null;
+    undoBtn.style.display = 'none';
+  }
+}
+
+// --- Sorting ---
+function sortTable(n) {
+  const table = document.querySelector('table');
+  let switched = true, dir = 'asc', switchcount = 0;
+  while (switched) {
+    switched = false;
+    const rows = table.rows;
+    for (let i = 1; i < (rows.length -1); i++) {
+      let shouldSwitch = false;
+      const x = rows[i].cells[n].innerText.toLowerCase();
+      const y = rows[i+1].cells[n].innerText.toLowerCase();
+      if (dir === 'asc') {
+        if (x > y) { shouldSwitch = true; break; }
+      } else {
+        if (x < y) { shouldSwitch = true; break; }
+      }
+    }
+    if (shouldSwitch) {
+      rows[i].parentNode.insertBefore(rows[i+1], rows[i]);
+      switched = true;
+      switchcount++;
+    } else if (switchcount === 0 && dir==='asc') {
+      dir='desc';
+      switched=true;
+    }
+  }
+}
+
+// --- Export ---
+function exportToExcel() {
+  const rows = document.querySelectorAll('#docTableBody tr');
+  let csv = ['Document Name,Appointment Type,Nature,Status,Remarks'].join('\n');
+  rows.forEach(row => {
+    const cells = row.cells;
+    const data = [
+      cells[0].innerText,
+      cells[1].innerText,
+      cells[2].innerText,
+      cells[3].innerText,
+      cells[4].innerText
+    ];
+    csv += '\n' + data.map(e => `"${e.replace(/"/g, '""')}"`).join(',');
+  });
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url; link.download='documents.csv';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+</script>
+</body>
+</html>
